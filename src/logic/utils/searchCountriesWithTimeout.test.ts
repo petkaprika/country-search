@@ -1,18 +1,16 @@
+/**
+ * @jest-environment node
+ */
+
 import { afterEach, describe, expect, jest, test } from '@jest/globals';
 import { searchCountriesWithTimeout } from './searchCountriesWithTimeout.js';
 
 const originalFetch = globalThis.fetch;
-const originalTimeout = AbortSignal.timeout;
 
 describe('searchCountriesWithTimeout', () => {
   afterEach(() => {
     globalThis.fetch = originalFetch;
     jest.restoreAllMocks();
-
-    Object.defineProperty(AbortSignal, 'timeout', {
-      configurable: true,
-      value: originalTimeout,
-    });
   });
 
   test('should abort request when the input signal is aborted', async () => {
@@ -22,6 +20,11 @@ describe('searchCountriesWithTimeout', () => {
       (_input, init) =>
         new Promise<Response>((_resolve, reject) => {
           const signal = init?.signal;
+
+          if (signal?.aborted) {
+            reject(signal.reason);
+            return;
+          }
 
           signal?.addEventListener('abort', () => reject(signal.reason), { once: true });
         }),
@@ -42,15 +45,17 @@ describe('searchCountriesWithTimeout', () => {
     const inputController = new AbortController();
     const timeoutController = new AbortController();
 
-    Object.defineProperty(AbortSignal, 'timeout', {
-      configurable: true,
-      value: jest.fn(() => timeoutController.signal),
-    });
+    jest.spyOn(AbortSignal, 'timeout').mockReturnValue(timeoutController.signal);
 
     const mockFetch = jest.fn<typeof fetch>(
       (_input, init) =>
         new Promise<Response>((_resolve, reject) => {
           const signal = init?.signal;
+
+          if (signal?.aborted) {
+            reject(signal.reason);
+            return;
+          }
 
           signal?.addEventListener('abort', () => reject(signal.reason), { once: true });
         }),
