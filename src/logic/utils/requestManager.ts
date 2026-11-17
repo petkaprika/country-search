@@ -4,10 +4,13 @@ export function createRequestManager() {
   return {
     createSignal(): AbortSignal {
       controller?.abort();
-
       controller = new AbortController();
-
       return controller.signal;
+    },
+
+    abort(): void {
+      controller?.abort();
+      controller = null;
     },
   };
 }
